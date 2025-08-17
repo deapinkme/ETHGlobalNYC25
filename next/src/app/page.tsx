@@ -55,13 +55,13 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl font-bold text-black mb-4">
             Crypto-Powered File Gateway
           </h1>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-lg text-black mb-8">
             Access premium files with crypto payments
           </p>
           
@@ -79,7 +79,7 @@ export default function Home() {
 
         <div className="mt-16 max-w-xl mx-auto">
           <div className="bg-white shadow sm:rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-2xl font-semibold text-black mb-4">
               Access a File
             </h2>
             
@@ -89,7 +89,7 @@ export default function Home() {
                 value={fileId}
                 onChange={(e) => setFileId(e.target.value)}
                 placeholder="Enter file ID"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full p-3 border border-gray-400 rounded-lg text-black placeholder-gray-500"
               />
               
               <button
