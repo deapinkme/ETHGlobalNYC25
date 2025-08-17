@@ -1,56 +1,60 @@
 // app/api/file/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { fileStorage, fileContents } from '../upload/route';
+import { prisma } from '@/lib/prisma';
 import { updateMiddlewareConfig } from '../../middleware';
 
 export async function GET(req: NextRequest) {
-  // Update middleware config for this specific file
-  await updateMiddlewareConfig(req);
+  try {
+    // Update middleware config for this specific file
+    await updateMiddlewareConfig(req);
 
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
 
-  if (!id) {
-    return new NextResponse('File ID required', { status: 400 });
-  }
-
-  const file = fileStorage.get(id);
-  if (!file) {
-    return new NextResponse('File not found', { status: 404 });
-  }
-
-  // Check if file has expired
-  if (file.metadata?.expiryDate && new Date(file.metadata.expiryDate) < new Date()) {
-    return new NextResponse('File has expired', { status: 410 });
-  }
-
-  // Check max downloads
-  if (file.metadata?.maxDownloads && 
-      file.metadata.currentDownloads && 
-      file.metadata.currentDownloads >= file.metadata.maxDownloads) {
-    return new NextResponse('Download limit reached', { status: 410 });
-  }
-
-  // Get the file content
-  const content = fileContents.get(id);
-  if (!content) {
-    return new NextResponse('File content not found', { status: 404 });
-  }
-
-  // Update download count
-  if (file.metadata) {
-    file.metadata.currentDownloads = (file.metadata.currentDownloads || 0) + 1;
-    fileStorage.set(id, file);
-  }
-
-  return new NextResponse(content, {
-    status: 200,
-    headers: {
-      'Content-Type': file.mimeType,
-      'Content-Disposition': `attachment; filename="${file.name}"`
+    if (!id) {
+      return new NextResponse('File ID required', { status: 400 });
     }
-  });
+
+    const file = await prisma.file.findUnique({
+      where: { id }
+    });
+
+    if (!file) {
+      return new NextResponse('File not found', { status: 404 });
+    }
+
+    // Check if file has expired
+    if (file.expiryDate && new Date(file.expiryDate) < new Date()) {
+      return new NextResponse('File has expired', { status: 410 });
+    }
+
+    // Check max downloads
+    if (file.maxDownloads && file.currentDownloads >= file.maxDownloads) {
+      return new NextResponse('Download limit reached', { status: 410 });
+    }
+
+    // Update download count
+    await prisma.file.update({
+      where: { id },
+      data: {
+        currentDownloads: {
+          increment: 1
+        }
+      }
+    });
+
+    return new NextResponse(file.content, {
+      status: 200,
+      headers: {
+        'Content-Type': file.mimeType,
+        'Content-Disposition': `attachment; filename="${file.name}"`
+      }
+    });
+  } catch (error) {
+    console.error('Download error:', error);
+    return new NextResponse('Download failed', { status: 500 });
+  }
 }
 
 export async function OPTIONS() {

@@ -121,6 +121,14 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold mb-4 text-gray-900">Your Files</h2>
               {/* Add file listing component here */}
             </div>
+            <div className="mb-8">
+              <a 
+                href="/files" 
+                className="text-blue-500 hover:text-blue-600 font-medium"
+              >
+                Browse All Files →
+              </a>
+            </div>
           </div>
         )}
       </div>

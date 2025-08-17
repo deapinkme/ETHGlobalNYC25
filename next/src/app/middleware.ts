@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { paymentMiddleware } from 'x402-next';
-import { fileStorage } from './api/upload/route';
+import { prisma } from '@/lib/prisma';
 
 interface X402Config {
   price: string;
@@ -69,13 +69,21 @@ export async function updateMiddlewareConfig(req: NextRequest) {
   const id = searchParams.get('id');
 
   if (id) {
-    const file = fileStorage.get(id);
+    const file = await prisma.file.findUnique({
+      where: { id },
+      select: {
+        price: true,
+        mimeType: true,
+        description: true
+      }
+    });
+    
     if (file) {
       middleware.updateConfig('/api/file', {
         price: file.price,
         network: "base-sepolia",
         config: {
-          description: file.metadata?.description || "Access to paywalled file",
+          description: file.description || "Access to paywalled file",
           mimeType: file.mimeType
         }
       });
