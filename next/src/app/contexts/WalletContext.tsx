@@ -1,3 +1,4 @@
+'use client';
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { createWalletClient, custom, type WalletClient } from 'viem';
 import { baseSepolia } from 'viem/chains';
