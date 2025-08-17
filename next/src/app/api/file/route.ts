@@ -1,12 +1,13 @@
 // app/api/file/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { fileStorage } from '../upload/route';
-
-// Add a type for file content storage
-const fileContents = new Map<string, Buffer>();
+import { fileStorage, fileContents } from '../upload/route';
+import { updateMiddlewareConfig } from '../../middleware';
 
 export async function GET(req: NextRequest) {
+  // Update middleware config for this specific file
+  await updateMiddlewareConfig(req);
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
 
@@ -31,15 +32,18 @@ export async function GET(req: NextRequest) {
     return new NextResponse('Download limit reached', { status: 410 });
   }
 
+  // Get the file content
+  const content = fileContents.get(id);
+  if (!content) {
+    return new NextResponse('File content not found', { status: 404 });
+  }
+
   // Update download count
   if (file.metadata) {
     file.metadata.currentDownloads = (file.metadata.currentDownloads || 0) + 1;
+    fileStorage.set(id, file);
   }
 
-  // Get the file content (in a real app, this would come from your storage)
-  const content = fileContents.get(id) || Buffer.from('');
-
-  // Return the file
   return new NextResponse(content, {
     status: 200,
     headers: {
