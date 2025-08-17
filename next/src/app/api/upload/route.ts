@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { paymentMiddleware } from 'x402-express';
 import { StoredFile, FileUploadRequest } from '@/types/file';
 import crypto from 'crypto';
 
 // In-memory storage (replace with a database in production)
 export const fileStorage = new Map<string, StoredFile>();
+export const fileContents = new Map<string, Buffer>();
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,14 +20,15 @@ export async function POST(req: NextRequest) {
     // Generate unique file ID
     const fileId = crypto.randomBytes(16).toString('hex');
     
-    // Store file data (in production, use proper file storage like S3)
+    // Store file data
     const buffer = Buffer.from(await file.arrayBuffer());
+    fileContents.set(fileId, buffer);
     
     // Store file metadata
     const storedFile: StoredFile = {
       id: fileId,
       name: file.name,
-      mimeType: file.type,
+      mimeType: file.type || 'application/octet-stream',
       size: file.size,
       price: metadata.price,
       ownerAddress,
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
         expiryDate: metadata.expiryDate,
         maxDownloads: metadata.maxDownloads,
         currentDownloads: 0,
-        tags: metadata.tags
+        tags: metadata.tags || []
       },
       createdAt: new Date().toISOString()
     };

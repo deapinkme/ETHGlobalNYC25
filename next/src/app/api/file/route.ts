@@ -1,44 +1,10 @@
 // app/api/file/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { paymentMiddleware } from 'x402-express';
 import { fileStorage } from '../upload/route';
 
-// Create the middleware configuration
-const middleware = paymentMiddleware(
-  process.env.NEXT_PUBLIC_CREATOR_ADDRESS!, // Set this in .env
-  {
-    "GET /api/file": {
-      price: "$1.00", // This will be overridden per file
-      network: "base-sepolia",
-      config: {
-        description: "Access to paywalled file content",
-        inputSchema: {
-          type: "object",
-          properties: {
-            id: { 
-              type: "string", 
-              description: "File ID to access" 
-            }
-          },
-          required: ["id"]
-        },
-        outputSchema: {
-          type: "object",
-          properties: {
-            content: { 
-              type: "string", 
-              description: "The file content" 
-            }
-          }
-        }
-      }
-    }
-  },
-  {
-    url: "https://x402.org/facilitator"
-  }
-);
+// Add a type for file content storage
+const fileContents = new Map<string, Buffer>();
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -65,36 +31,16 @@ export async function GET(req: NextRequest) {
     return new NextResponse('Download limit reached', { status: 410 });
   }
 
-  // Override the price for this specific file
-  const customMiddleware = paymentMiddleware(
-    file.ownerAddress,
-    {
-      "GET /api/file": {
-        price: file.price,
-        network: "base-sepolia",
-        config: {
-          description: file.metadata?.description || "Access to paywalled file"
-        }
-      }
-    },
-    {
-      url: "https://x402.org/facilitator"
-    }
-  );
-
-  // Apply the x402 middleware
-  const response = await customMiddleware(req);
-  if (response.status === 402) {
-    return response;
-  }
-
   // Update download count
   if (file.metadata) {
     file.metadata.currentDownloads = (file.metadata.currentDownloads || 0) + 1;
   }
 
+  // Get the file content (in a real app, this would come from your storage)
+  const content = fileContents.get(id) || Buffer.from('');
+
   // Return the file
-  return new NextResponse(Buffer.from(/* get file content */), {
+  return new NextResponse(content, {
     status: 200,
     headers: {
       'Content-Type': file.mimeType,
