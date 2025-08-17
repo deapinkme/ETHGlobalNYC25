@@ -20,41 +20,59 @@ interface X402Middleware {
 }
 
 // Configure the payment middleware
-export const middleware: X402Middleware = paymentMiddleware(
-  process.env.NEXT_PUBLIC_CREATOR_ADDRESS!, // Set this in .env
-  {
-    '/api/file': {
-      price: '$1.00', // This will be dynamically set per file
-      network: "base-sepolia",
-      config: {
-        description: 'Access to paywalled file content',
-        mimeType: 'application/octet-stream', // Will be overridden per file
-        inputSchema: {
-          type: "object",
-          properties: {
-            id: {
-              type: "string",
-              description: "File ID to access"
-            }
-          },
-          required: ["id"]
-        },
-        outputSchema: {
-          type: "object",
-          properties: {
-            content: {
-              type: "string",
-              description: "The file content"
-            }
-          }
+export async function middleware(req: NextRequest) {
+  console.log('Middleware called for:', req.url);
+  
+  // Only handle file downloads
+  if (!req.nextUrl.pathname.startsWith('/api/file')) {
+    return NextResponse.next();
+  }
+
+  const fileId = req.nextUrl.searchParams.get('id');
+  if (!fileId) {
+    return NextResponse.next();
+  }
+
+  // Get file price from database
+  const file = await prisma.file.findUnique({
+    where: { id: fileId },
+    select: { price: true }
+  });
+
+  if (!file) {
+    return NextResponse.next();
+  }
+
+  console.log('Processing payment for file:', {
+    id: fileId,
+    price: file.price
+  });
+
+  // Create and execute middleware for this specific price
+  const response = await paymentMiddleware(
+    process.env.NEXT_PUBLIC_CREATOR_ADDRESS!,
+    {
+      '/api/file': {
+        price: file.price,
+        network: "base-sepolia",
+        config: {
+          description: 'Access to paywalled file content',
+          mimeType: 'application/octet-stream'
         }
       }
+    },
+    {
+      url: "https://x402.org/facilitator"
     }
-  },
-  {
-    url: "https://x402.org/facilitator" // for testnet
-  }
-) as X402Middleware;
+  )(req);
+
+  console.log('Middleware response:', {
+    status: response.status,
+    headers: Object.fromEntries(response.headers.entries())
+  });
+
+  return response;
+}
 
 // Configure which paths the middleware should run on
 export const config = {

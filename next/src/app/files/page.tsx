@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '../contexts/WalletContext';
 import { WalletConnect } from '../components/WalletConnect';
-import { ethers } from 'ethers';
-import { x402 } from 'x402-client';
+import { api } from '@/lib/api';
 
 interface File {
   id: string;
@@ -32,10 +31,8 @@ export default function Files() {
 
   const fetchFiles = async () => {
     try {
-      const response = await fetch('/api/files');
-      if (!response.ok) throw new Error('Failed to fetch files');
-      const data = await response.json();
-      setFiles(data);
+      const response = await api.getFiles();
+      setFiles(response);
     } catch (error) {
       console.error('Error fetching files:', error);
     } finally {
@@ -50,25 +47,9 @@ export default function Files() {
     }
 
     try {
-      // Get payment receipt from x402
-      const receipt = await x402.pay({
-        path: `/api/file?id=${file.id}`,
-        method: 'GET'
-      });
-
-      // Download file with receipt
-      const response = await fetch(`/api/file?id=${file.id}`, {
-        headers: {
-          'x402-receipt': receipt
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Download failed: ${await response.text()}`);
-      }
-
-      // Handle file download
-      const blob = await response.blob();
+      console.log('Attempting download for file:', file.id);
+      const blob = await api.downloadFile(file.id);
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -78,8 +59,8 @@ export default function Files() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('Download error:', error);
-      alert('Failed to download file');
+      console.error('Detailed download error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to download file');
     }
   };
 

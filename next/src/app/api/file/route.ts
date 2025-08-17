@@ -2,13 +2,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { updateMiddlewareConfig } from '../../middleware';
 
 export async function GET(req: NextRequest) {
   try {
-    // Update middleware config for this specific file
-    await updateMiddlewareConfig(req);
-
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
@@ -24,13 +20,25 @@ export async function GET(req: NextRequest) {
       return new NextResponse('File not found', { status: 404 });
     }
 
+    console.log('File state:', {
+      id: file.id,
+      expiryDate: file.expiryDate,
+      currentDownloads: file.currentDownloads,
+      maxDownloads: file.maxDownloads
+    });
+
     // Check if file has expired
     if (file.expiryDate && new Date(file.expiryDate) < new Date()) {
+      console.log('File expired:', file.expiryDate);
       return new NextResponse('File has expired', { status: 410 });
     }
 
     // Check max downloads
     if (file.maxDownloads && file.currentDownloads >= file.maxDownloads) {
+      console.log('Download limit reached:', {
+        current: file.currentDownloads,
+        max: file.maxDownloads
+      });
       return new NextResponse('Download limit reached', { status: 410 });
     }
 

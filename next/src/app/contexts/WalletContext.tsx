@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { createWalletClient, custom, type WalletClient } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import type { Hex } from 'viem';
+import { updateApiClient } from '@/lib/api';
 
 interface WalletContextType {
   isConnected: boolean;
@@ -165,6 +166,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       };
     }
   }, [address, disconnectWallet]);
+
+  useEffect(() => {
+    updateApiClient(walletClient);
+  }, [walletClient]);
 
   const value: WalletContextType = {
     isConnected,
