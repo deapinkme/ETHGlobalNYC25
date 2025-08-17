@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { StoredFile, FileUploadRequest } from '@/types/file';
-import crypto from 'crypto';
+import { FileUploadRequest } from '@/types/file';
+import { PrismaClient } from '@prisma/client';
 
-// In-memory storage (replace with a database in production)
-export const fileStorage = new Map<string, StoredFile>();
-export const fileContents = new Map<string, Buffer>();
+const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,37 +15,32 @@ export async function POST(req: NextRequest) {
       return new NextResponse('Missing required fields', { status: 400 });
     }
 
-    // Generate unique file ID
-    const fileId = crypto.randomBytes(16).toString('hex');
-    
-    // Store file data
+    // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer());
-    fileContents.set(fileId, buffer);
     
-    // Store file metadata
-    const storedFile: StoredFile = {
-      id: fileId,
-      name: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      size: file.size,
-      price: metadata.price,
-      ownerAddress,
-      metadata: {
+    // Store in database
+    const storedFile = await prisma.file.create({
+      data: {
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        price: metadata.price,
+        ownerAddress,
         description: metadata.description,
-        expiryDate: metadata.expiryDate,
+        expiryDate: metadata.expiryDate ? new Date(metadata.expiryDate) : null,
         maxDownloads: metadata.maxDownloads,
-        currentDownloads: 0,
-        tags: metadata.tags || []
+        tags: metadata.tags ? JSON.stringify(metadata.tags) : null,
+        content: buffer,
       },
-      createdAt: new Date().toISOString()
-    };
+    });
 
-    fileStorage.set(fileId, storedFile);
-
+    // Return response without the content field
+    const { content, ...fileWithoutContent } = storedFile;
+    
     return NextResponse.json({
       success: true,
-      fileId,
-      file: storedFile
+      fileId: storedFile.id,
+      file: fileWithoutContent
     });
   } catch (error) {
     console.error('Upload error:', error);

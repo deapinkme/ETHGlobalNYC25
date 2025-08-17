@@ -1,0 +1,27 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model File {
+  id              String    @id @default(uuid())
+  name            String
+  mimeType        String
+  size            Int
+  price           String
+  ownerAddress    String
+  description     String?
+  expiryDate      DateTime?
+  maxDownloads    Int?
+  currentDownloads Int      @default(0)
+  tags            String?   // Stored as JSON string
+  createdAt       DateTime  @default(now())
+  content         Bytes     // Store file content as binary
+}
